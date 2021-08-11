@@ -1,0 +1,35 @@
+FROM mcr.microsoft.com/dotnet/core/sdk:3.0 AS build-env
+WORKDIR /app
+
+# Copy csproj and restore as distinct layers
+COPY ./file-ingest-back/*.csproj ./
+RUN dotnet restore
+
+# Copy everything else and build
+COPY ./file-ingest-back/. ./
+RUN dotnet publish -c Release -o out
+
+# Build runtime image ubuntu 18.04
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.0-bionic
+
+#deploy the app
+WORKDIR /app
+COPY --from=build-env /app/out .
+
+# create path to ingest files and save key
+RUN mkdir /app/saved-files
+
+# copy the start script and change access
+COPY ./file-ingest-back/start-gcp.sh .
+RUN chmod +x /app/start-gcp.sh
+
+# copy the start script and change access
+COPY ./file-ingest-back/secrets/book-255910-cb84b5f5eb61.json ./app/secrets/
+RUN chmod +x /app/secrets/book-255910-cb84b5f5eb61.json
+
+ENV GOOGLE_APPLICATION_CREDENTIALS=./secrets/book-255910-cb84b5f5eb61.json
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/start-gcp.sh"]

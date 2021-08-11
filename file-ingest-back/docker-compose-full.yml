@@ -1,0 +1,49 @@
+version: '3'
+services:
+
+  file-ingest-back:
+    build:
+        context: .
+        dockerfile: Dockerfile
+    ports: 
+      - "5000:5000"
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - PORT=5000
+
+  file-ingest-front:
+    build:
+        context: ../../file-ingest-front/
+        dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    depends_on: 
+      - file-ingest-back
+      - file-ingest-db
+  
+  file-ingest-db:
+    container_name: file-ingest-db
+    build:
+        context: ../../file-ingest-db/
+        dockerfile: Dockerfile
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    devices: 
+      - "/dev/fuse"
+    depends_on: 
+      - sql-server-db
+    environment: 
+      ASPNETCORE_ENVIRONMENT: "Docker"
+
+  sql-server-db:
+    container_name: sql-server-db
+    image: microsoft/mssql-server-linux
+    ports:
+      - "1433:1433"
+    environment:
+      SA_PASSWORD: "hard!@1029"
+      ACCEPT_EULA: "Y"
